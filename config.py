@@ -34,8 +34,12 @@ GITHUB_APP_USER_ID: int = int(get_env_var(name="GH_APP_USER_ID"))
 GITHUB_APP_USER_NAME: str = get_env_var(name="GH_APP_USER_NAME")
 GITHUB_ISSUE_DIR = ".github/ISSUE_TEMPLATE"
 GITHUB_ISSUE_TEMPLATES: list[str] = ["bug_report.yml", "feature_request.yml"]
+GITHUB_PERSONAL_ACCESS_TOKEN: str = get_env_var(name="GH_PERSONAL_ACCESS_TOKEN")
 GITHUB_PRIVATE_KEY_ENCODED: str = get_env_var(name="GH_PRIVATE_KEY")
 GITHUB_PRIVATE_KEY: bytes = base64.b64decode(s=GITHUB_PRIVATE_KEY_ENCODED)
+GITHUB_TEST_REPO: str = get_env_var(name="GH_TEST_REPO_URL")
+GITHUB_TEST_REPO_NAME: str = get_env_var(name="GH_TEST_REPO_NAME")
+GITHUB_TEST_REPO_OWNER: str = get_env_var(name="GH_TEST_REPO_OWNER")
 GITHUB_WEBHOOK_SECRET: str = get_env_var(name="GH_WEBHOOK_SECRET")
 
 # OpenAI Credentials from environment variables
@@ -66,6 +70,10 @@ SUPABASE_URL: str = get_env_var(name="SUPABASE_URL")
 # Stripe
 STRIPE_API_KEY: str = get_env_var(name="STRIPE_API_KEY")
 STRIPE_FREE_TIER_PRICE_ID: str = get_env_var(name="STRIPE_FREE_TIER_PRICE_ID")
+
+JIRA_API_TOKEN: str = get_env_var(name="JIRA_API_TOKEN")
+JIRA_BASE_URL: str = get_env_var(name="JIRA_BASE_URL")
+JIRA_EMAIL: str = get_env_var(name="JIRA_EMAIL")
 
 # General
 DEFAULT_TIME = datetime(year=1, month=1, day=1, hour=0, minute=0, second=0)

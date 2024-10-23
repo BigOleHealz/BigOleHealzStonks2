@@ -16,6 +16,7 @@ import requests
 from fastapi import Request
 from github import Github, GithubException
 from github.ContentFile import ContentFile
+from github.Issue import Issue
 from github.PullRequest import PullRequest
 from github.Repository import Repository
 
@@ -29,7 +30,10 @@ from config import (
     GITHUB_APP_NAME,
     GITHUB_ISSUE_DIR,
     GITHUB_ISSUE_TEMPLATES,
+    GITHUB_PERSONAL_ACCESS_TOKEN,
     GITHUB_PRIVATE_KEY,
+    GITHUB_TEST_REPO_NAME,
+    GITHUB_TEST_REPO_OWNER,
     IS_PRD,
     MAX_RETRIES,
     PRODUCT_NAME,
@@ -58,6 +62,16 @@ from utils.text_copy import (
     request_limit_reached,
 )
 
+@handle_exceptions(default_return_value=None, raise_on_error=False)
+def create_github_issue(title: str, description: str) -> Issue:
+    """Create a GitHub issue and return the issue URL."""
+    github: Github = Github(GITHUB_PERSONAL_ACCESS_TOKEN)
+    repo: Repository = github.get_repo(f"{GITHUB_TEST_REPO_OWNER}/{GITHUB_TEST_REPO_NAME}")
+    issue: Issue = repo.create_issue(title=title, body=description)
+    issue.add_to_labels(PRODUCT_ID)  # Add label to trigger GitAuto
+    
+    print(f"Github issue created: {issue.html_url}")
+    return issue
 
 @handle_exceptions(default_return_value=None, raise_on_error=False)
 def add_issue_templates(full_name: str, installer_name: str, token: str) -> None:
