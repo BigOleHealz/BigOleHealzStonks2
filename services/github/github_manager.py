@@ -835,7 +835,7 @@ def update_comment_for_raised_errors(
 
 
 @handle_exceptions(default_return_value=None, raise_on_error=False)
-def (title: str, description: str) -> Issue:
+def create_github_issue(title: str, description: str) -> Issue:
     """Create a GitHub issue and return the issue URL."""
     github: Github = Github(GITHUB_PERSONAL_ACCESS_TOKEN)
     repo: Repository = github.get_repo(f"{GITHUB_TEST_REPO_OWNER}/{GITHUB_TEST_REPO_NAME}")
