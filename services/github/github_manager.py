@@ -14,7 +14,7 @@ from uuid import uuid4
 import jwt  # For generating JWTs (JSON Web Tokens)
 import requests
 from fastapi import Request
-from github import Github, GithubException
+from github import Auth, Github, GithubException
 from github.ContentFile import ContentFile
 from github.Issue import Issue
 from github.PullRequest import PullRequest
@@ -837,7 +837,8 @@ def update_comment_for_raised_errors(
 @handle_exceptions(default_return_value=None, raise_on_error=False)
 def create_github_issue(title: str, description: str) -> Issue:
     """Create a GitHub issue and return the issue URL."""
-    github: Github = Github(GITHUB_PERSONAL_ACCESS_TOKEN)
+    # github: Github = Github(GITHUB_PERSONAL_ACCESS_TOKEN)
+    github: Github = Github(auth=Auth.Token(GITHUB_PERSONAL_ACCESS_TOKEN))
     repo: Repository = github.get_repo(f"{GITHUB_TEST_REPO_OWNER}/{GITHUB_TEST_REPO_NAME}")
     issue: Issue = repo.create_issue(title=title, body=description)
     issue.add_to_labels(PRODUCT_ID)  # Add label to trigger GitAuto

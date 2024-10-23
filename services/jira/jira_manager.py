@@ -14,7 +14,7 @@ from config import (
 from utils.handle_exceptions import handle_exceptions
 
 # Helper Functions
-@handle_exceptions(default_return_value=None, raise_on_error=False)
+@handle_exceptions()
 def extract_issue_details(payload: Union[dict, Request]) -> dict:
     """Extract relevant issue details from the JIRA webhook payload."""
     if isinstance(payload, Request):
