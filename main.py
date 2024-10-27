@@ -14,15 +14,15 @@ from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 from config import (
     ENV,
     GITHUB_WEBHOOK_SECRET,
+    JIRA_WEBHOOK_SECRET,
     PRODUCT_NAME,
     SENTRY_DSN,
     UTF8
 )
 from scheduler import schedule_handler
-from services.github.github_manager import create_github_issue, verify_webhook_signature
+from services.github.github_manager import verify_webhook_signature as verify_github_webhook_signature
 from services.jira.jira_manager import (
-    add_comment_to_jira,
-    extract_issue_details
+    verify_webhook_signature as verify_jira_webhook_signature
 )
 from services.webhook_handler import handle_webhook_event
 
@@ -53,12 +53,11 @@ async def handle_webhook(request: Request) -> dict[str, str]:
     content_type: str = request.headers.get(
         "Content-Type", "Content-Type not specified"
     )
+    agent: str = "GitHub"
     event_name: str = request.headers.get("X-GitHub-Event", "Event not specified")
     print("\n" * 3 + "-" * 70)
-    print(f"Received event: {event_name} with content type: {content_type}\n")
-
-    # Validate if the webhook signature comes from GitHub
-    await verify_webhook_signature(request=request, secret=GITHUB_WEBHOOK_SECRET)
+    print(f"Received event: {event_name} from Agent: {agent} with content type: {content_type}")
+    await verify_github_webhook_signature(request=request, secret=GITHUB_WEBHOOK_SECRET)
 
     # Process the webhook event but never raise an exception as some event_name like "marketplace_purchase" doesn't have a payload
     try:
@@ -81,25 +80,53 @@ async def handle_webhook(request: Request) -> dict[str, str]:
     except Exception as e:  # pylint: disable=broad-except
         print(f"Error in parsing JSON payload: {e}")
 
-    await handle_webhook_event(event_name=event_name, payload=payload)
+    await handle_webhook_event(event_name=event_name, payload=payload, agent=agent)
 
-@app.post("/jira-webhook")
-async def handle_jira_webhook(request: Request):
+@app.post(path="/jira-webhook")
+async def handle_webhook(request: Request) -> dict[str, str]:
+    content_type: str = request.headers.get(
+        "Content-Type", "Content-Type not specified"
+    )
+    agent: str = "JIRA"
+    event_name: str = (await request.json()).get("issue_event_type_name", "Event not specified")
+    
+    print("\n" * 3 + "-" * 70)
+    print(f"Received event: {event_name} from Agent: {agent} with content type: {content_type}")
+    await verify_jira_webhook_signature(request=request, secret=JIRA_WEBHOOK_SECRET)
+    
     try:
-        payload: dict = await request.json()
-        jira_issue: dict = extract_issue_details(payload=payload)
-        if not (jira_issue_key := jira_issue.get("key")):
-            raise ValueError("JIRA issue key not found in the payload.")
-        
-        github_issue: Issue = create_github_issue(title=jira_issue["title"], description=jira_issue["description"])
-        
-        add_comment_to_jira(issue_key=jira_issue_key, github_issue_link=github_issue.html_url)
-        
-        return {"message": "Jira webhook processed successfully"}
+        request_body: bytes = await request.body()
+    except Exception as e:  # pylint: disable=broad-except
+        print(f"Error in reading request body: {e}")
+        request_body = b""
 
-    except Exception as e:
-        print(f"Error in processing JIRA webhook: {e}")
-        return {"message": f"Error in processing JIRA webhook: {e}"}
+    payload: Any = {}
+    try:
+        # First try to parse the body as JSON
+        payload = json.loads(s=request_body.decode(encoding=UTF8))
+        
+        with open("payload.json", "w") as f:
+            json.dump(payload, f, indent=4)
+        
+        payload["action"] = event_name
+        payload.setdefault("installation", {})["id"] = 56165848
+        payload["issue"]["fields"]["creator"]["displayName"] = "BigOleHealz"
+        payload["user"]["displayName"] = "BigOleHealz"
+        payload["issue"]["fields"]["reporter"]["displayName"] = "BigOleHealz"
+        payload["issue"]["fields"]["reporter"]["accountId"] = 17244643
+            
+    except json.JSONDecodeError:
+        # If JSON parsing fails, treat the body as URL-encoded
+        decoded_body: dict[str, list[str]] = urllib.parse.parse_qs(
+            qs=request_body.decode(encoding=UTF8)
+        )
+        if "payload" in decoded_body:
+            payload = json.loads(s=decoded_body["payload"][0])
+    except Exception as e:  # pylint: disable=broad-except
+        print(f"Error in parsing JSON payload: {e}")
+
+    await handle_webhook_event(event_name=event_name, payload=payload, agent=agent)
+
 
 @app.get(path="/")
 async def root() -> dict[str, str]:

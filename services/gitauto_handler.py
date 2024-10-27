@@ -50,7 +50,7 @@ from utils.text_copy import (
 supabase_manager = SupabaseManager(url=SUPABASE_URL, key=SUPABASE_SERVICE_ROLE_KEY)
 
 
-async def handle_gitauto(payload: GitHubLabeledPayload, trigger_type: str) -> None:
+async def handle_gitauto(payload: GitHubLabeledPayload, trigger_type: str, trigger_source: str) -> None:
     """Core functionality to create comments on issue, create PRs, and update progress."""
     current_time: float = time.time()
 
@@ -87,6 +87,7 @@ async def handle_gitauto(payload: GitHubLabeledPayload, trigger_type: str) -> No
 
     # Extract other information
     github_urls, other_urls = extract_urls(text=issue_body)
+
     installation_id: int = payload["installation"]["id"]
     token: str = get_installation_access_token(installation_id=installation_id)
     base_args: BaseArgs = {
@@ -130,11 +131,13 @@ async def handle_gitauto(payload: GitHubLabeledPayload, trigger_type: str) -> No
         return
 
     msg = "Reading this issue body, comments, and file tree..."
-    comment_body = create_progress_bar(p=0, msg=msg)
-    comment_url: str = create_comment(
-        issue_number=issue_number, body=comment_body, base_args=base_args
-    )
-    base_args["comment_url"] = comment_url
+    
+    if trigger_source == "GitHub":
+        comment_body = create_progress_bar(p=0, msg=msg)
+        comment_url: str = create_comment(
+            issue_number=issue_number, body=comment_body, base_args=base_args
+        )
+        base_args["comment_url"] = comment_url
     unique_issue_id = f"{owner_type}/{owner_name}/{repo_name}#{issue_number}"
     usage_record_id = supabase_manager.create_user_request(
         user_id=sender_id,
@@ -156,7 +159,9 @@ async def handle_gitauto(payload: GitHubLabeledPayload, trigger_type: str) -> No
 
     # Prepare PR body
     comment_body = create_progress_bar(p=10, msg="Writing a pull request body...")
-    update_comment(comment_url=comment_url, token=token, body=comment_body)
+    
+    if trigger_source == "GitHub":
+        update_comment(comment_url=comment_url, token=token, body=comment_body)
     pr_body: str = write_pr_body(
         input_message=json.dumps(
             obj={
@@ -170,9 +175,14 @@ async def handle_gitauto(payload: GitHubLabeledPayload, trigger_type: str) -> No
     )
     base_args["pr_body"] = pr_body
 
-    # Create a remote branch
-    comment_body = create_progress_bar(p=20, msg="Creating a remote branch...")
-    update_comment(comment_url=comment_url, token=token, body=comment_body)
+
+    if trigger_source == "GitHub":
+        # Create a remote branch
+        comment_body = create_progress_bar(p=20, msg="Creating a remote branch...")
+        update_comment(comment_url=comment_url, token=token, body=comment_body)
+        
+    import pdb; pdb.set_trace()
+        
     latest_commit_sha: str = get_latest_remote_commit_sha(
         unique_issue_id=unique_issue_id,
         clone_url=repo["clone_url"],

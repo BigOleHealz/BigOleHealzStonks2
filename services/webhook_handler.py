@@ -1,4 +1,5 @@
 # Standard imports
+from typing import cast
 import re
 
 # Local imports
@@ -21,6 +22,7 @@ from services.github.github_types import (
 )
 from services.supabase import SupabaseManager
 from services.gitauto_handler import handle_gitauto
+from services.jira.jira_manager import map_jira_to_github_event_payload
 from utils.handle_exceptions import handle_exceptions
 
 # Initialize managers
@@ -79,7 +81,7 @@ async def handle_installation_repos_added(payload) -> None:
 
 
 @handle_exceptions(default_return_value=None, raise_on_error=True)
-async def handle_webhook_event(event_name: str, payload: GitHubEventPayload) -> None:
+async def handle_webhook_event(event_name: str, payload: GitHubEventPayload, agent: str) -> None:
     """
     Determine the event type and call the appropriate handler.
     Check the type of webhook event and handle accordingly.
@@ -114,7 +116,7 @@ async def handle_webhook_event(event_name: str, payload: GitHubEventPayload) -> 
     # See https://docs.github.com/en/webhooks/webhook-events-and-payloads#issues
     if event_name == "issues":
         if action == "labeled":
-            await handle_gitauto(payload=payload, trigger_type="label")
+            await handle_gitauto(payload=payload, trigger_type="label", trigger_source=agent)
             return
         if action == "opened":
             create_comment_on_issue_with_gitauto_button(payload=payload)
@@ -129,17 +131,25 @@ async def handle_webhook_event(event_name: str, payload: GitHubEventPayload) -> 
             search_text += " - " + PRODUCT_ID
             if payload["comment"]["body"].find(search_text) != -1:
                 issue_handled = True
-                await handle_gitauto(payload=payload, trigger_type="comment")
+                await handle_gitauto(payload=payload, trigger_type="comment", trigger_source=agent)
         else:
             if (
                 payload["comment"]["body"].find(search_text) != -1
                 and payload["comment"]["body"].find(search_text + " - ") == -1
             ):
                 issue_handled = True
-                await handle_gitauto(payload=payload, trigger_type="comment")
+                await handle_gitauto(payload=payload, trigger_type="comment", trigger_source=agent)
         if not issue_handled:
             print("Edit is not an activated GitAtuo trigger.")
         return
+    
+    if event_name in ("issue_created", "issue_updated"):
+        
+        github_payload: GitHubEventPayload = cast(GitHubEventPayload, map_jira_to_github_event_payload(jira_payload=payload))
+        
+        await handle_gitauto(payload=github_payload, trigger_type="label", trigger_source=agent)
+    
+    
 
     # Track merged PRs as this is also our success status
     # See https://docs.github.com/en/webhooks/webhook-events-and-payloads#pull_request

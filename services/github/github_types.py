@@ -24,7 +24,7 @@ class LabelInfo(TypedDict):
 
 class UserInfo(TypedDict):
     login: str
-    id: int
+    id: Union[int, str]
     node_id: str
     avatar_url: str
     gravatar_id: str

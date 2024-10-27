@@ -74,6 +74,7 @@ STRIPE_FREE_TIER_PRICE_ID: str = get_env_var(name="STRIPE_FREE_TIER_PRICE_ID")
 JIRA_API_TOKEN: str = get_env_var(name="JIRA_API_TOKEN")
 JIRA_BASE_URL: str = get_env_var(name="JIRA_BASE_URL")
 JIRA_EMAIL: str = get_env_var(name="JIRA_EMAIL")
+JIRA_WEBHOOK_SECRET: str = get_env_var(name="JIRA_WEBHOOK_SECRET")
 
 # General
 DEFAULT_TIME = datetime(year=1, month=1, day=1, hour=0, minute=0, second=0)
