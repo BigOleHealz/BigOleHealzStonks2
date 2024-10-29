@@ -4,7 +4,6 @@ import urllib.parse
 from typing import Any
 
 # Third-party imports
-from github.Issue import Issue
 import sentry_sdk
 from fastapi import FastAPI, Request
 from mangum import Mangum
@@ -53,10 +52,9 @@ async def handle_webhook(request: Request) -> dict[str, str]:
     content_type: str = request.headers.get(
         "Content-Type", "Content-Type not specified"
     )
-    agent: str = "GitHub"
     event_name: str = request.headers.get("X-GitHub-Event", "Event not specified")
     print("\n" * 3 + "-" * 70)
-    print(f"Received event: {event_name} from Agent: {agent} with content type: {content_type}")
+    print(f"Received event: {event_name} from Agent: Github with content type: {content_type}")
     await verify_github_webhook_signature(request=request, secret=GITHUB_WEBHOOK_SECRET)
 
     # Process the webhook event but never raise an exception as some event_name like "marketplace_purchase" doesn't have a payload
@@ -80,7 +78,7 @@ async def handle_webhook(request: Request) -> dict[str, str]:
     except Exception as e:  # pylint: disable=broad-except
         print(f"Error in parsing JSON payload: {e}")
 
-    await handle_webhook_event(event_name=event_name, payload=payload, agent=agent)
+    await handle_webhook_event(event_name=event_name, payload=payload)
 
 @app.post(path="/jira-webhook")
 async def handle_webhook(request: Request) -> dict[str, str]:
@@ -108,11 +106,12 @@ async def handle_webhook(request: Request) -> dict[str, str]:
         with open("payload.json", "w") as f:
             json.dump(payload, f, indent=4)
         
+        username: str = "BigOleHealz"
         payload["action"] = event_name
         payload.setdefault("installation", {})["id"] = 56165848
-        payload["issue"]["fields"]["creator"]["displayName"] = "BigOleHealz"
-        payload["user"]["displayName"] = "BigOleHealz"
-        payload["issue"]["fields"]["reporter"]["displayName"] = "BigOleHealz"
+        payload["issue"]["fields"]["creator"]["displayName"] = username
+        payload["user"]["displayName"] = username
+        payload["issue"]["fields"]["reporter"]["displayName"] = username
         payload["issue"]["fields"]["reporter"]["accountId"] = 17244643
             
     except json.JSONDecodeError:
@@ -125,7 +124,7 @@ async def handle_webhook(request: Request) -> dict[str, str]:
     except Exception as e:  # pylint: disable=broad-except
         print(f"Error in parsing JSON payload: {e}")
 
-    await handle_webhook_event(event_name=event_name, payload=payload, agent=agent)
+    await handle_webhook_event(event_name=event_name, payload=payload)
 
 
 @app.get(path="/")

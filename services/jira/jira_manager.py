@@ -60,10 +60,12 @@ def add_comment_to_jira(issue_key: str, github_issue_link: str):
     else:
         print(f"Failed to add comment to JIRA: {response.text}")
 
+
 @handle_exceptions(raise_on_error=True)
 async def verify_webhook_signature(request: Request, secret: str) -> None:
     """Verify the webhook signature for security"""
     signature: str | None = request.headers.get("X-Hub-Signature")
+    
     if signature is None:
         raise ValueError("Missing webhook signature")
     body: bytes = await request.body()
@@ -83,13 +85,15 @@ def map_jira_to_github_event_payload(jira_payload: Dict[str, Any]) -> GitHubEven
 
     issue_fields = jira_payload["issue"]["fields"]
     reporter = issue_fields["reporter"]
-
+    
+    repo_url: str = f"git@github.com:{jira_payload['user']['displayName']}/{jira_payload['issue']['fields']['project']['name']}.git"
+    
     # Build the GitHubLabeledPayload type
     github_payload: GitHubLabeledPayload = GitHubLabeledPayload(
         action=jira_payload["issue_event_type_name"],
         issue=IssueInfo(
             url=jira_payload["issue"]["self"],
-            repository_url="",  # No direct equivalent in JIRA
+            repository_url=repo_url,  # No direct equivalent in JIRA
             labels_url="",  # Optional, map if needed
             comments_url="",  # Optional, map if needed
             events_url="",  # Optional, map if needed
@@ -136,6 +140,7 @@ def map_jira_to_github_event_payload(jira_payload: Dict[str, Any]) -> GitHubEven
             html_url=issue_fields["project"]["self"],
             description=issue_fields["project"].get("description", ""),
             fork=False,
+            clone_url=repo_url,
             url=issue_fields["project"]["self"],
             created_at="",
             updated_at="",

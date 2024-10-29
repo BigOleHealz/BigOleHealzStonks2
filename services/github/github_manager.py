@@ -471,7 +471,7 @@ def get_latest_remote_commit_sha(
         base_args["owner"],
         base_args["repo"],
         base_args["base_branch"],
-        base_args["comment_url"],
+        base_args.get("comment_url", ""),
     )
     token = base_args["token"]
     try:
