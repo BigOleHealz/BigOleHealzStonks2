@@ -12,6 +12,8 @@ from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 # Local imports
 from config import (
     ENV,
+    GITHUB_TEST_REPO_NAME,
+    GITHUB_TEST_REPO_OWNER,
     GITHUB_WEBHOOK_SECRET,
     JIRA_WEBHOOK_SECRET,
     PRODUCT_NAME,
@@ -85,11 +87,10 @@ async def handle_webhook(request: Request) -> dict[str, str]:
     content_type: str = request.headers.get(
         "Content-Type", "Content-Type not specified"
     )
-    agent: str = "JIRA"
-    event_name: str = (await request.json()).get("issue_event_type_name", "Event not specified")
+    event_name: str = (await request.json()).get("webhookEvent", "Event not specified")
     
     print("\n" * 3 + "-" * 70)
-    print(f"Received event: {event_name} from Agent: {agent} with content type: {content_type}")
+    print(f"Received event: {event_name} from Agent: JIRA with content type: {content_type}")
     await verify_jira_webhook_signature(request=request, secret=JIRA_WEBHOOK_SECRET)
     
     try:
@@ -103,16 +104,13 @@ async def handle_webhook(request: Request) -> dict[str, str]:
         # First try to parse the body as JSON
         payload = json.loads(s=request_body.decode(encoding=UTF8))
         
-        with open("payload.json", "w") as f:
-            json.dump(payload, f, indent=4)
-        
-        username: str = "BigOleHealz"
+        username: str = GITHUB_TEST_REPO_NAME
         payload["action"] = event_name
         payload.setdefault("installation", {})["id"] = 56165848
+        payload["issue"]["fields"]["reporter"]["accountId"] = 17244643
         payload["issue"]["fields"]["creator"]["displayName"] = username
         payload["user"]["displayName"] = username
         payload["issue"]["fields"]["reporter"]["displayName"] = username
-        payload["issue"]["fields"]["reporter"]["accountId"] = 17244643
             
     except json.JSONDecodeError:
         # If JSON parsing fails, treat the body as URL-encoded

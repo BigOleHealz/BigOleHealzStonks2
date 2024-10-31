@@ -85,8 +85,13 @@ def map_jira_to_github_event_payload(jira_payload: Dict[str, Any]) -> GitHubEven
 
     issue_fields = jira_payload["issue"]["fields"]
     reporter = issue_fields["reporter"]
+    issue_id: int = int(jira_payload["issue"]["id"])
+    issue_key: str = jira_payload["issue"]["key"]
     
-    repo_url: str = f"git@github.com:{jira_payload['user']['displayName']}/{jira_payload['issue']['fields']['project']['name']}.git"
+    
+    # repo_url: str = f"git@github.com:{jira_payload['user']['displayName']}/{jira_payload['issue']['fields']['project']['name']}.git"
+    
+    repo_url: str = next((label for label in issue_fields["labels"] if label.startswith("https://github.com/")), None)
     
     # Build the GitHubLabeledPayload type
     github_payload: GitHubLabeledPayload = GitHubLabeledPayload(
@@ -99,7 +104,7 @@ def map_jira_to_github_event_payload(jira_payload: Dict[str, Any]) -> GitHubEven
             events_url="",  # Optional, map if needed
             html_url=f"https://bigolehealz.atlassian.net/browse/{jira_payload['issue']['key']}",
             id=int(jira_payload["issue"]["id"]),
-            node_id=jira_payload["issue"]["key"],
+            node_id=issue_key,
             number=int(jira_payload["issue"]["id"]),
             title=issue_fields["summary"],
             user=map_user_info(reporter),
@@ -123,7 +128,7 @@ def map_jira_to_github_event_payload(jira_payload: Dict[str, Any]) -> GitHubEven
         ),
         label=LabelInfo(
             id=0,  # Placeholder, JIRA doesn't provide label IDs
-            node_id="",  # Placeholder
+            node_id=issue_key,  # Placeholder
             url="",  # Placeholder
             name=PRODUCT_ID,
             color="",  # No color in JIRA
@@ -184,8 +189,10 @@ def map_jira_to_github_event_payload(jira_payload: Dict[str, Any]) -> GitHubEven
             description=issue_fields["project"].get("description", ""),
         ),
         sender=map_user_info(reporter),
-        installation=InstallationMiniInfo(id=56165848, node_id=issue_fields["project"]["key"]),  # Not applicable for JIRA
-    )
+        installation=InstallationMiniInfo(
+            id=jira_payload['installation']['id'],
+            node_id=issue_fields["project"]["key"])
+        )
 
     # Return as GitHubEventPayload type
     return cast(GitHubEventPayload, github_payload)

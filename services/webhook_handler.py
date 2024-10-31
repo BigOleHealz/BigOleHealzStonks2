@@ -143,7 +143,7 @@ async def handle_webhook_event(event_name: str, payload: GitHubEventPayload) -> 
             print("Edit is not an activated GitAtuo trigger.")
         return
     
-    if event_name in ("issue_created", "issue_updated"):
+    if event_name.startswith("jira:") and payload["issue"]["fields"]["assignee"]:
         
         github_payload: GitHubEventPayload = cast(GitHubEventPayload, map_jira_to_github_event_payload(jira_payload=payload))
         
