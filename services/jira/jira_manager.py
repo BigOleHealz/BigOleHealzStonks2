@@ -88,9 +88,6 @@ def map_jira_to_github_event_payload(jira_payload: Dict[str, Any]) -> GitHubEven
     issue_id: int = int(jira_payload["issue"]["id"])
     issue_key: str = jira_payload["issue"]["key"]
     
-    
-    # repo_url: str = f"git@github.com:{jira_payload['user']['displayName']}/{jira_payload['issue']['fields']['project']['name']}.git"
-    
     repo_url: str = next((label for label in issue_fields["labels"] if label.startswith("https://github.com/")), None)
     
     # Build the GitHubLabeledPayload type
