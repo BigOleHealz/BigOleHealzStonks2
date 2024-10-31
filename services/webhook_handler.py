@@ -144,12 +144,8 @@ async def handle_webhook_event(event_name: str, payload: GitHubEventPayload) -> 
         return
     
     if event_name.startswith("jira:") and payload["issue"]["fields"]["assignee"]:
-        
         github_payload: GitHubEventPayload = cast(GitHubEventPayload, map_jira_to_github_event_payload(jira_payload=payload))
-        
         await handle_gitauto_from_jira(payload=github_payload, trigger_type="label")
-    
-    
 
     # Track merged PRs as this is also our success status
     # See https://docs.github.com/en/webhooks/webhook-events-and-payloads#pull_request
