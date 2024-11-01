@@ -408,7 +408,7 @@ async def handle_gitauto_from_jira(payload: GitHubLabeledPayload, trigger_type: 
         # If files are found but no changes are made, it means that the agent found files but didn't think it's necessary to commit changes or fell into an infinite-like loop (e.g. slightly different searches)
         if is_explored and not is_committed:
             retry_count += 1
-            if retry_count > 0:
+            if retry_count > 10:
                 break
 
         # Because the agent is committing changes, keep doing the loop

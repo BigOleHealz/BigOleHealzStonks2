@@ -6,14 +6,13 @@ from typing import Any
 # Third-party imports
 import sentry_sdk
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from mangum import Mangum
 from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 
 # Local imports
 from config import (
     ENV,
-    GITHUB_TEST_REPO_NAME,
-    GITHUB_TEST_REPO_OWNER,
     GITHUB_WEBHOOK_SECRET,
     JIRA_WEBHOOK_SECRET,
     PRODUCT_NAME,
@@ -81,6 +80,10 @@ async def handle_webhook(request: Request) -> dict[str, str]:
         print(f"Error in parsing JSON payload: {e}")
 
     await handle_webhook_event(event_name=event_name, payload=payload)
+    return JSONResponse(
+        content={"message": "GitHub webhook processed successfully"},
+        status_code=200
+    )
 
 @app.post(path="/jira-webhook")
 async def handle_webhook(request: Request) -> dict[str, str]:
@@ -104,14 +107,7 @@ async def handle_webhook(request: Request) -> dict[str, str]:
         # First try to parse the body as JSON
         payload = json.loads(s=request_body.decode(encoding=UTF8))
         
-        username: str = GITHUB_TEST_REPO_NAME
         payload["action"] = event_name
-        payload.setdefault("installation", {})["id"] = 56165848
-        payload["issue"]["fields"]["reporter"]["accountId"] = 17244643
-        payload["issue"]["fields"]["creator"]["displayName"] = username
-        payload["user"]["displayName"] = username
-        payload["issue"]["fields"]["reporter"]["displayName"] = username
-            
     except json.JSONDecodeError:
         # If JSON parsing fails, treat the body as URL-encoded
         decoded_body: dict[str, list[str]] = urllib.parse.parse_qs(
@@ -123,6 +119,10 @@ async def handle_webhook(request: Request) -> dict[str, str]:
         print(f"Error in parsing JSON payload: {e}")
 
     await handle_webhook_event(event_name=event_name, payload=payload)
+    return JSONResponse(
+        content={"message": "Jira webhook processed successfully"},
+        status_code=200
+    )
 
 
 @app.get(path="/")

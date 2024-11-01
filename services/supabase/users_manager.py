@@ -230,3 +230,37 @@ class UsersManager:
         if len(data[1]) > 0:
             return True
         return False
+    
+    @handle_exceptions(default_return_value=None, raise_on_error=False)
+    def query_user(self, **kwargs) -> dict:
+        """Query a user record from the users table based on id, user_name, user_id, or email"""
+        valid_keys = {"id", "user_name", "user_id", "email"}
+        filters = {k: v for k, v in kwargs.items() if k in valid_keys and v is not None}
+        if not filters:
+            logging.error("No valid filters provided for querying user.")
+            return None
+        # Build and execute query
+        query = self.client.table("users").select("*")
+        for key, value in filters.items():
+            query = query.eq(column=key, value=value)
+        # Execute query and return first matching record, if any
+        data, _ = query.execute()
+        return data[1][0] if data and data[1] else None
+
+    @handle_exceptions(default_return_value=None, raise_on_error=False)
+    def query_installation(self, **kwargs) -> dict:
+        """Query an installation record from the installations table based on installation_id, owner_name, owner_id, and/or uninstalled_at"""
+        valid_keys = {"installation_id", "owner_name", "owner_id", "uninstalled_at"}
+        filters = {k: v for k, v in kwargs.items() if k in valid_keys and v is not None}
+        if not filters:
+            logging.error("No valid filters provided for querying installation.")
+            return None
+        # Build and execute query
+        query = self.client.table("installations").select("*")
+        for key, value in filters.items():
+            query = query.eq(column=key, value=value)
+        
+        query = query.order(column='created_at', desc=True)
+        # Execute query and return first matching record, if any
+        data, _ = query.execute()
+        return data[1][0] if data and data[1] else None

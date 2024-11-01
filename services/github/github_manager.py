@@ -14,7 +14,8 @@ from uuid import uuid4
 import jwt  # For generating JWTs (JSON Web Tokens)
 import requests
 from fastapi import Request
-from github import Github, GithubException
+from github import Auth, Github, GithubException
+from github.Issue import Issue
 from github.ContentFile import ContentFile
 from github.PullRequest import PullRequest
 from github.Repository import Repository
@@ -832,3 +833,42 @@ def update_comment_for_raised_errors(
     update_comment(comment_url=comment_url, token=token, body=body)
 
     raise RuntimeError("Error occurred")
+
+
+@handle_exceptions(default_return_value=None, raise_on_error=False)
+def create_github_issue(title: str, description: str) -> Issue:
+    """Create a GitHub issue and return the issue URL."""
+    # github: Github = Github(GITHUB_PERSONAL_ACCESS_TOKEN)
+    github: Github = Github(auth=Auth.Token(GITHUB_PERSONAL_ACCESS_TOKEN))
+    repo: Repository = github.get_repo(f"{GITHUB_TEST_REPO_OWNER}/{GITHUB_TEST_REPO_NAME}")
+    issue: Issue = repo.create_issue(title=title, body=description)
+    issue.add_to_labels(PRODUCT_ID)  # Add label to trigger GitAuto
+    print(f"Github issue created: {issue.html_url}")
+    return issue
+
+
+@handle_exceptions(default_return_value=None, raise_on_error=False)
+def check_github_issue_exists(issue_number: int) -> Optional[Issue]:
+    """Check if a GitHub issue exists and return the Issue object if it does."""
+    github: Github = Github(auth=Auth.Token(GITHUB_PERSONAL_ACCESS_TOKEN))
+    repo: Repository = github.get_repo(f"{GITHUB_TEST_REPO_OWNER}/{GITHUB_TEST_REPO_NAME}")
+    issue: Issue = repo.get_issue(number=issue_number)
+    print(f"GitHub issue found: {issue.html_url}")
+    return issue
+
+
+# Function to close an issue and label it as "deleted"
+@handle_exceptions(default_return_value=None, raise_on_error=False)
+def close_github_issue(issue_number: int) -> Optional[Issue]:
+    """Close a GitHub issue and label it as deleted."""
+    try:
+        github: Github = Github(auth=Auth.Token(GITHUB_PERSONAL_ACCESS_TOKEN))
+        repo: Repository = github.get_repo(f"{GITHUB_TEST_REPO_OWNER}/{GITHUB_TEST_REPO_NAME}")
+        issue: Issue = repo.get_issue(number=issue_number)
+        issue.edit(state="closed")
+        issue.add_to_labels("deleted")
+        print(f"Issue #{issue_number} closed and labeled as 'deleted'.")
+        return issue
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None

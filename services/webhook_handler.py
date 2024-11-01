@@ -144,6 +144,11 @@ async def handle_webhook_event(event_name: str, payload: GitHubEventPayload) -> 
         return
     
     if event_name.startswith("jira:") and payload["issue"]["fields"]["assignee"]:
+        pattern: str = r"(?i)repository:\s*([^\s/]+/[^\s]+)(?:\s|$)"
+        match = re.search(pattern, payload["issue"]["fields"]["description"])
+        if not match: # No repository found in the description
+            return
+        payload['full_repo_name'] = match.group(1)
         github_payload: GitHubEventPayload = cast(GitHubEventPayload, map_jira_to_github_event_payload(jira_payload=payload))
         await handle_gitauto_from_jira(payload=github_payload, trigger_type="label")
 
