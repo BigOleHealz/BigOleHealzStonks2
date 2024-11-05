@@ -13,6 +13,8 @@ from config import (
     JIRA_EMAIL,
     JIRA_API_TOKEN,
     PRODUCT_ID,
+    SUPABASE_SERVICE_ROLE_KEY,
+    SUPABASE_URL,
 )
 from services.github.github_types import (
     GitHubEventPayload,
@@ -24,8 +26,10 @@ from services.github.github_types import (
     UserInfo,
     InstallationMiniInfo,
 )
-
+from services.supabase import SupabaseManager
 from utils.handle_exceptions import handle_exceptions
+
+supabase_manager = SupabaseManager(url=SUPABASE_URL, key=SUPABASE_SERVICE_ROLE_KEY)
 
 # Helper Functions
 @handle_exceptions()
@@ -88,7 +92,19 @@ def map_jira_to_github_event_payload(jira_payload: Dict[str, Any]) -> GitHubEven
     issue_id: int = int(jira_payload["issue"]["id"])
     issue_key: str = jira_payload["issue"]["key"]
     
-    repo_url: str = next((label for label in issue_fields["labels"] if label.startswith("https://github.com/")), None)
+    # Extract the repo owner and name from the full repo name
+    repo_full_name: str = jira_payload["full_repo_name"]
+    repo_owner: str = repo_full_name.split("/")[0]
+    repo_name: str = repo_full_name.split("/")[-1]
+    repo_url: str = f"https://github.com/{repo_owner}/{repo_name}"
+    
+    user_record: dict | None = supabase_manager.query_user(user_name=repo_owner)
+    repo_owner_user_id: int = user_record["user_id"] if user_record else 0
+    
+    installation_record: dict | None = supabase_manager.query_installation(owner_id=repo_owner_user_id, uninstalled_at=None)
+    installation_id: int = installation_record["installation_id"] if installation_record else 0
+    
+    reporter["accountId"] = repo_owner_user_id
     
     # Build the GitHubLabeledPayload type
     github_payload: GitHubLabeledPayload = GitHubLabeledPayload(
@@ -136,9 +152,9 @@ def map_jira_to_github_event_payload(jira_payload: Dict[str, Any]) -> GitHubEven
             id=int(issue_fields["project"]["id"]),
             node_id=issue_fields["project"]["key"],
             name=issue_fields["project"]["name"],
-            full_name=issue_fields["project"]["name"],
+            full_name=jira_payload["full_repo_name"],
             private=False,
-            owner=map_user_info(reporter),
+            owner=map_user_info({**reporter, **{"displayName": repo_owner}}),
             html_url=issue_fields["project"]["self"],
             description=issue_fields["project"].get("description", ""),
             fork=False,
@@ -187,7 +203,7 @@ def map_jira_to_github_event_payload(jira_payload: Dict[str, Any]) -> GitHubEven
         ),
         sender=map_user_info(reporter),
         installation=InstallationMiniInfo(
-            id=jira_payload['installation']['id'],
+            id=installation_id,
             node_id=issue_fields["project"]["key"])
         )
 

@@ -148,6 +148,18 @@ async def handle_webhook_event(event_name: str, payload: GitHubEventPayload) -> 
         match = re.search(pattern, payload["issue"]["fields"]["description"])
         if not match: # No repository found in the description
             return
+            # # Extract workspace id from payload["issue"]["fields"]["project"]["self"]
+            # project_link: str = payload["issue"]["fields"]["project"]["self"]
+            # subdomain = re.match(r'^(?:https?:\/\/)?([^\.]+)\.atlassian\.net', project_link).group(1)
+            # if not subdomain:
+            #     print("No project ID found")
+            #     return
+            # record: dict | None = supabase_manager.query_installation(jira_workspace_id=subdomain, uninstalled_at=None)
+            # payload['full_repo_name'] = f'{record["jira_workspace_id"]}/{record["repo_name"]}'
+            # if not record:
+            #     print("No installation found")
+            #     raise ValueError(f"No installation found for the Jira workspace: {subdomain}")
+        # else:
         payload['full_repo_name'] = match.group(1)
         github_payload: GitHubEventPayload = cast(GitHubEventPayload, map_jira_to_github_event_payload(jira_payload=payload))
         await handle_gitauto_from_jira(payload=github_payload, trigger_type="label")

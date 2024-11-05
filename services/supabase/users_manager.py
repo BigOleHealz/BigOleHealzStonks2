@@ -248,19 +248,30 @@ class UsersManager:
         return data[1][0] if data and data[1] else None
 
     @handle_exceptions(default_return_value=None, raise_on_error=False)
-    def query_installation(self, **kwargs) -> dict:
-        """Query an installation record from the installations table based on installation_id, owner_name, owner_id, and/or uninstalled_at"""
-        valid_keys = {"installation_id", "owner_name", "owner_id", "uninstalled_at"}
-        filters = {k: v for k, v in kwargs.items() if k in valid_keys and v is not None}
+    def query_installation(self, sort_column: str|None=None, case_sensitive: bool=False, **kwargs) -> dict:
+        """Query an installation record from the installations table based on jira_workspace_id, installation_id, owner_name, owner_id, repo_name, and/or uninstalled_at"""
+        valid_keys = {"jira_workspace_id", "installation_id", "owner_name", "owner_id", "repo_name", "uninstalled_at"}
+        filters = {k: v for k, v in kwargs.items() if k in valid_keys}
         if not filters:
             logging.error("No valid filters provided for querying installation.")
             return None
-        # Build and execute query
+        
+        # Define numeric fields that should always use eq operator
+        numeric_fields = {"owner_id", "installation_id"}
         query = self.client.table("installations").select("*")
         for key, value in filters.items():
-            query = query.eq(column=key, value=value)
+            if value is None:
+                query = query.is_(column=key, value=None)
+            elif key in numeric_fields:
+                # Always use eq for numeric fields
+                query = query.eq(column=key, value=value)
+            elif isinstance(value, str) and not case_sensitive:
+                query = query.ilike(key, value)
+            else:
+                query = query.eq(column=key, value=value)
+         
+        if sort_column:
+            query = query.order(column=sort_column, desc=True)
         
-        query = query.order(column='created_at', desc=True)
-        # Execute query and return first matching record, if any
         data, _ = query.execute()
         return data[1][0] if data and data[1] else None

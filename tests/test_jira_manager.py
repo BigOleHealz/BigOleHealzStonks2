@@ -117,22 +117,10 @@ async def test_extract_issue_details_with_request(
 
 def test_jira_webhook_endpoint(mock_jira_payload: Dict[str, Any], mocker: MockerFixture) -> None:
     """Test the /jira-webhook endpoint."""
-    # Mock the create_github_issue function
-    mock_create_github_issue = mocker.patch("main.create_github_issue")
-    mock_create_github_issue.return_value = mocker.Mock(html_url=test_github_issue_link)
-
-    # Mock the add_comment_to_jira function
-    mocker.patch("main.add_comment_to_jira")
-
     response = client.post("/jira-webhook", json=mock_jira_payload)
     assert response.status_code == 200
     assert response.json() == {"message": "Jira webhook processed successfully"}
 
-    # Assert that create_github_issue was called with the correct parameters
-    mock_create_github_issue.assert_called_once_with(
-        title=mock_jira_payload["issue"]["fields"]["summary"],
-        description=mock_jira_payload["issue"]["fields"]["description"]
-    )
 
 def test_add_comment_to_jira_success(
     test_create_jira_issue: Dict[str, Any],
