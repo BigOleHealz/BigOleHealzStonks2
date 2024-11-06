@@ -12,9 +12,9 @@ from config import (
 )
 from services.github.github_manager import (
     add_issue_templates,
+    check_repo_exists,
     create_comment_on_issue_with_gitauto_button,
     get_installation_access_token,
-    # turn_on_issue,
 )
 from services.github.github_types import (
     GitHubEventPayload,
@@ -22,7 +22,7 @@ from services.github.github_types import (
 )
 from services.supabase import SupabaseManager
 from services.gitauto_handler import handle_gitauto, handle_gitauto_from_jira
-from services.jira.jira_manager import map_jira_to_github_event_payload
+from services.jira.jira_manager import get_github_full_repo_name_from_jira_payload, map_jira_to_github_event_payload
 from utils.handle_exceptions import handle_exceptions
 
 # Initialize managers
@@ -144,23 +144,17 @@ async def handle_webhook_event(event_name: str, payload: GitHubEventPayload) -> 
         return
     
     if event_name.startswith("jira:") and payload["issue"]["fields"]["assignee"]:
-        pattern: str = r"(?i)repository:\s*([^\s/]+/[^\s]+)(?:\s|$)"
-        match = re.search(pattern, payload["issue"]["fields"]["description"])
-        if not match: # No repository found in the description
+        full_repo_name: str = get_github_full_repo_name_from_jira_payload(jira_payload=payload)
+        if not full_repo_name:
+            print("No repository specified in JIRA payload")
             return
-            # # Extract workspace id from payload["issue"]["fields"]["project"]["self"]
-            # project_link: str = payload["issue"]["fields"]["project"]["self"]
-            # subdomain = re.match(r'^(?:https?:\/\/)?([^\.]+)\.atlassian\.net', project_link).group(1)
-            # if not subdomain:
-            #     print("No project ID found")
-            #     return
-            # record: dict | None = supabase_manager.query_installation(jira_workspace_id=subdomain, uninstalled_at=None)
-            # payload['full_repo_name'] = f'{record["jira_workspace_id"]}/{record["repo_name"]}'
-            # if not record:
-            #     print("No installation found")
-            #     raise ValueError(f"No installation found for the Jira workspace: {subdomain}")
-        # else:
-        payload['full_repo_name'] = match.group(1)
+        
+        repo_exists: bool = check_repo_exists(full_repo_name=full_repo_name)
+        ### SHOULD I RAISE AN ERROR IF REPO DOES NOT EXIST?
+        if not repo_exists:
+            print(f"Repository {full_repo_name} does not exist")
+            return
+        payload['full_repo_name'] = full_repo_name
         github_payload: GitHubEventPayload = cast(GitHubEventPayload, map_jira_to_github_event_payload(jira_payload=payload))
         await handle_gitauto_from_jira(payload=github_payload, trigger_type="label")
 

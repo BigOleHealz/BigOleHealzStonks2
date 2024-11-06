@@ -11,19 +11,10 @@ from mangum import Mangum
 from sentry_sdk.integrations.aws_lambda import AwsLambdaIntegration
 
 # Local imports
-from config import (
-    ENV,
-    GITHUB_WEBHOOK_SECRET,
-    JIRA_WEBHOOK_SECRET,
-    PRODUCT_NAME,
-    SENTRY_DSN,
-    UTF8
-)
+from config import ENV, GITHUB_WEBHOOK_SECRET, JIRA_WEBHOOK_SECRET, PRODUCT_NAME, SENTRY_DSN, UTF8
 from scheduler import schedule_handler
 from services.github.github_manager import verify_webhook_signature as verify_github_webhook_signature
-from services.jira.jira_manager import (
-    verify_webhook_signature as verify_jira_webhook_signature
-)
+from services.jira.jira_manager import verify_webhook_signature as verify_jira_webhook_signature
 from services.webhook_handler import handle_webhook_event
 
 if ENV != "local":
@@ -56,6 +47,8 @@ async def handle_webhook(request: Request) -> dict[str, str]:
     event_name: str = request.headers.get("X-GitHub-Event", "Event not specified")
     print("\n" * 3 + "-" * 70)
     print(f"Received event: {event_name} from Agent: Github with content type: {content_type}")
+
+    # Validate if the webhook signature comes from GitHub
     await verify_github_webhook_signature(request=request, secret=GITHUB_WEBHOOK_SECRET)
 
     # Process the webhook event but never raise an exception as some event_name like "marketplace_purchase" doesn't have a payload
@@ -80,10 +73,7 @@ async def handle_webhook(request: Request) -> dict[str, str]:
         print(f"Error in parsing JSON payload: {e}")
 
     await handle_webhook_event(event_name=event_name, payload=payload)
-    return JSONResponse(
-        content={"message": "GitHub webhook processed successfully"},
-        status_code=200
-    )
+    return {"message": "GitHub webhook processed successfully"}
 
 @app.post(path="/jira-webhook")
 async def handle_webhook(request: Request) -> dict[str, str]:
@@ -94,6 +84,8 @@ async def handle_webhook(request: Request) -> dict[str, str]:
     
     print("\n" * 3 + "-" * 70)
     print(f"Received event: {event_name} from Agent: JIRA with content type: {content_type}")
+
+    # Validate if the webhook signature comes from JIRA
     await verify_jira_webhook_signature(request=request, secret=JIRA_WEBHOOK_SECRET)
     
     try:
@@ -119,10 +111,7 @@ async def handle_webhook(request: Request) -> dict[str, str]:
         print(f"Error in parsing JSON payload: {e}")
 
     await handle_webhook_event(event_name=event_name, payload=payload)
-    return JSONResponse(
-        content={"message": "Jira webhook processed successfully"},
-        status_code=200
-    )
+    return {"message": "JIRA webhook processed successfully"}
 
 
 @app.get(path="/")

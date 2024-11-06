@@ -838,7 +838,6 @@ def update_comment_for_raised_errors(
 @handle_exceptions(default_return_value=None, raise_on_error=False)
 def create_github_issue(title: str, description: str) -> Issue:
     """Create a GitHub issue and return the issue URL."""
-    # github: Github = Github(GITHUB_PERSONAL_ACCESS_TOKEN)
     github: Github = Github(auth=Auth.Token(GITHUB_PERSONAL_ACCESS_TOKEN))
     repo: Repository = github.get_repo(f"{GITHUB_TEST_REPO_OWNER}/{GITHUB_TEST_REPO_NAME}")
     issue: Issue = repo.create_issue(title=title, body=description)
@@ -857,7 +856,6 @@ def check_github_issue_exists(issue_number: int) -> Optional[Issue]:
     return issue
 
 
-# Function to close an issue and label it as "deleted"
 @handle_exceptions(default_return_value=None, raise_on_error=False)
 def close_github_issue(issue_number: int) -> Optional[Issue]:
     """Close a GitHub issue and label it as deleted."""
@@ -872,3 +870,14 @@ def close_github_issue(issue_number: int) -> Optional[Issue]:
     except Exception as e:
         print(f"An error occurred: {e}")
         return None
+
+
+@handle_exceptions(default_return_value=None, raise_on_error=False)
+def check_repo_exists(full_repo_name: str) -> bool:
+    """Check if a repository exists using the GitHub API"""
+    try:
+        response = requests.get(f"{GITHUB_API_URL}/repos/{full_repo_name}")
+        return response.status_code == 200
+    except Exception as e:
+        print(f"Error checking repository existence: {e}")
+        return False

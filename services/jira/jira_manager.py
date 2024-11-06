@@ -44,6 +44,7 @@ def extract_issue_details(payload: Union[dict, Request]) -> dict:
         "description": issue["fields"]["description"]
     }
 
+
 @handle_exceptions(default_return_value=None, raise_on_error=False)
 def add_comment_to_jira(issue_key: str, github_issue_link: str):
     """Add a comment with the GitHub issue link to the JIRA issue."""
@@ -84,6 +85,20 @@ async def verify_webhook_signature(request: Request, secret: str) -> None:
         raise ValueError("Invalid webhook signature")
 
 
+@handle_exceptions(default_return_value=None, raise_on_error=False)
+def get_github_full_repo_name_from_jira_payload(jira_payload: dict) -> str:
+    """Extract the GitHub repository name from the JIRA webhook payload."""
+    changelog = jira_payload.get("changelog", {})
+    full_repo_name: str|None = None
+
+    # Iterate over the items in the changelog to find the "GitHub Repo" field
+    for item in changelog.get("items", []):
+        if item.get("field") == "GitHub Repo":
+            full_repo_name = item.get("toString")
+            break
+    return full_repo_name
+
+    
 def map_jira_to_github_event_payload(jira_payload: Dict[str, Any]) -> GitHubEventPayload:
     """Map a JIRA webhook payload to a GitHubEventPayload structure."""
 
