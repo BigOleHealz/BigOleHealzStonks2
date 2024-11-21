@@ -88,6 +88,7 @@ async def handle_webhook_event(event_name: str, payload: GitHubEventPayload) -> 
     https://docs.github.com/en/apps/github-marketplace/using-the-github-marketplace-api-in-your-app/handling-new-purchases-and-free-trials
     https://docs.github.com/en/webhooks/webhook-events-and-payloads?actionType=purchased#marketplace_purchase
     """
+    
     action: str = payload.get("action")
     if not action:
         return
