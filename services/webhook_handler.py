@@ -143,19 +143,14 @@ async def handle_webhook_event(event_name: str, payload: GitHubEventPayload) -> 
             print("Edit is not an activated GitAtuo trigger.")
         return
     
-    if event_name.startswith("jira:") and payload["issue"]["fields"]["assignee"]:
-        full_repo_name: str = get_github_full_repo_name_from_jira_payload(jira_payload=payload)
+    # i think that i can remove this
+    if event_name.startswith("avi:jira:") and payload["issue"]["fields"]["assignee"]:
+        github_payload: GitHubEventPayload = cast(GitHubEventPayload, map_jira_to_github_event_payload(jira_payload=payload))
+        
+        full_repo_name: str = github_payload.get("repository", {}).get("full_name")
         if not full_repo_name:
             print("No repository specified in JIRA payload")
             return
-        
-        repo_exists: bool = check_repo_exists(full_repo_name=full_repo_name)
-        ### SHOULD I RAISE AN ERROR IF REPO DOES NOT EXIST?
-        if not repo_exists:
-            print(f"Repository {full_repo_name} does not exist")
-            return
-        payload['full_repo_name'] = full_repo_name
-        github_payload: GitHubEventPayload = cast(GitHubEventPayload, map_jira_to_github_event_payload(jira_payload=payload))
         await handle_gitauto_from_jira(payload=github_payload, trigger_type="label")
 
     # Track merged PRs as this is also our success status
@@ -185,3 +180,4 @@ async def handle_webhook_event(event_name: str, payload: GitHubEventPayload) -> 
 
     # Unhandled events are captured here
     print(f"Event {event_name} with action {action} is not handled")
+

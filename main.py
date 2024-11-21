@@ -80,7 +80,7 @@ async def handle_webhook(request: Request) -> dict[str, str]:
     content_type: str = request.headers.get(
         "Content-Type", "Content-Type not specified"
     )
-    event_name: str = (await request.json()).get("webhookEvent", "Event not specified")
+    event_name: str = (await request.json()).get("eventType", "Event not specified")
     
     print("\n" * 3 + "-" * 70)
     print(f"Received event: {event_name} from Agent: JIRA with content type: {content_type}")
@@ -98,6 +98,9 @@ async def handle_webhook(request: Request) -> dict[str, str]:
     try:
         # First try to parse the body as JSON
         payload = json.loads(s=request_body.decode(encoding=UTF8))
+        
+        with open("payload.json", "w", encoding=UTF8) as file:
+            json.dump(obj=payload, fp=file, indent=4)
         
         payload["action"] = event_name
     except json.JSONDecodeError:

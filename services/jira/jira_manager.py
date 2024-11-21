@@ -102,16 +102,21 @@ def get_github_full_repo_name_from_jira_payload(jira_payload: dict) -> str:
 def map_jira_to_github_event_payload(jira_payload: Dict[str, Any]) -> GitHubEventPayload:
     """Map a JIRA webhook payload to a GitHubEventPayload structure."""
 
-    issue_fields = jira_payload["issue"]["fields"]
+    issue_data: dict = jira_payload["issue"]
+    issue_fields = issue_data["fields"]
+    github_repo_info: dict = issue_fields["githubRepo"]
+    issue_project: dict = issue_fields["project"]
+
     reporter = issue_fields["reporter"]
-    issue_id: int = int(jira_payload["issue"]["id"])
-    issue_key: str = jira_payload["issue"]["key"]
+    issue_id: int = int(issue_data["id"])
+    issue_key: str = issue_data["key"]
     
     # Extract the repo owner and name from the full repo name
-    repo_full_name: str = jira_payload["full_repo_name"]
-    repo_owner: str = repo_full_name.split("/")[0]
-    repo_name: str = repo_full_name.split("/")[-1]
-    repo_url: str = f"https://github.com/{repo_owner}/{repo_name}"
+    repo_full_name: str = github_repo_info["full_name"]
+    repo_owner: str = github_repo_info["owner"]
+    repo_name: str = github_repo_info["name"]
+    repo_url: str = github_repo_info["html_url"]
+    repo_id: int = github_repo_info["id"]
     
     user_record: dict | None = supabase_manager.query_user(user_name=repo_owner)
     repo_owner_user_id: int = user_record["user_id"] if user_record else 0
@@ -123,17 +128,17 @@ def map_jira_to_github_event_payload(jira_payload: Dict[str, Any]) -> GitHubEven
     
     # Build the GitHubLabeledPayload type
     github_payload: GitHubLabeledPayload = GitHubLabeledPayload(
-        action=jira_payload["issue_event_type_name"],
+        action=jira_payload["eventType"],
         issue=IssueInfo(
-            url=jira_payload["issue"]["self"],
+            url=issue_data["self"],
             repository_url=repo_url,  # No direct equivalent in JIRA
             labels_url="",  # Optional, map if needed
             comments_url="",  # Optional, map if needed
             events_url="",  # Optional, map if needed
             html_url=f"https://bigolehealz.atlassian.net/browse/{jira_payload['issue']['key']}",
-            id=int(jira_payload["issue"]["id"]),
+            id=issue_id,
             node_id=issue_key,
-            number=int(jira_payload["issue"]["id"]),
+            number=issue_id,
             title=issue_fields["summary"],
             user=map_user_info(reporter),
             labels=[],  # Optional: Extract JIRA labels if needed
@@ -164,17 +169,17 @@ def map_jira_to_github_event_payload(jira_payload: Dict[str, Any]) -> GitHubEven
             description=issue_fields["issuetype"]["description"],
         ),
         repository=RepositoryInfo(
-            id=int(issue_fields["project"]["id"]),
-            node_id=issue_fields["project"]["key"],
-            name=issue_fields["project"]["name"],
-            full_name=jira_payload["full_repo_name"],
+            id=int(repo_id),
+            node_id=issue_project["key"],
+            name=repo_name,
+            full_name=repo_full_name,
             private=False,
             owner=map_user_info({**reporter, **{"displayName": repo_owner}}),
-            html_url=issue_fields["project"]["self"],
-            description=issue_fields["project"].get("description", ""),
+            html_url=repo_url,
+            description=issue_project.get("description", ""),
             fork=False,
             clone_url=repo_url,
-            url=issue_fields["project"]["self"],
+            url=repo_url,
             created_at="",
             updated_at="",
             pushed_at="",
@@ -195,26 +200,26 @@ def map_jira_to_github_event_payload(jira_payload: Dict[str, Any]) -> GitHubEven
             is_template=False,
             web_commit_signoff_required=False,
             topics=[],
-            visibility="public",
+            visibility="private",
             forks=0,
             open_issues=0,
             watchers=0,
-            default_branch="main",
+            default_branch=github_repo_info["default_branch"],
             custom_properties={},
         ),
         organization=OrganizationInfo(
             login="JIRA Project",
-            id=int(issue_fields["project"]["id"]),
-            node_id=issue_fields["project"]["key"],
-            url=issue_fields["project"]["self"],
+            id=int(issue_project["id"]),
+            node_id=issue_project["key"],
+            url=issue_project["self"],
             repos_url="",
             events_url="",
             hooks_url="",
             issues_url="",
             members_url="",
             public_members_url="",
-            avatar_url=issue_fields["project"]["avatarUrls"]["48x48"],
-            description=issue_fields["project"].get("description", ""),
+            avatar_url=issue_project["avatarUrls"]["48x48"],
+            description=issue_project.get("description", ""),
         ),
         sender=map_user_info(reporter),
         installation=InstallationMiniInfo(
