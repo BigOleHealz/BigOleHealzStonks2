@@ -51,7 +51,7 @@ from utils.text_copy import (
 supabase_manager = SupabaseManager(url=SUPABASE_URL, key=SUPABASE_SERVICE_ROLE_KEY)
 
 
-async def handle_gitauto(payload: GitHubLabeledPayload, trigger_type: str) -> None:
+async def handle_gitauto(payload: GitHubLabeledPayload, trigger_type: str, base_branch: str = None) -> None:
     """Core functionality to create comments on issue, create PRs, and update progress."""
     current_time: float = time.time()
 
